@@ -1,0 +1,19 @@
+# Used by CodePipeline P1: zips each Lambda folder and updates the deployed functions.
+version: 0.2
+
+env:
+  variables:
+    INDEX_FUNCTION: index-photos
+    SEARCH_FUNCTION: search-photos
+
+phases:
+  build:
+    commands:
+      # index.py copy: functions created by the CloudFormation stack use handler index.lambda_handler,
+      # functions created in the console default to lambda_function.lambda_handler.
+      - cp lambda_index/lambda_function.py lambda_index/index.py
+      - cp lambda_search/lambda_function.py lambda_search/index.py
+      - cd lambda_index && zip -r ../lf1.zip . && cd ..
+      - cd lambda_search && zip -r ../lf2.zip . && cd ..
+      - aws lambda update-function-code --function-name $INDEX_FUNCTION --zip-file fileb://lf1.zip
+      - aws lambda update-function-code --function-name $SEARCH_FUNCTION --zip-file fileb://lf2.zip
