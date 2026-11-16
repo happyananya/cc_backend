@@ -1,7 +1,7 @@
 # AI Photo Search — Backend
 
 Backend for Cloud Computing Assignment 3. Frontend lives in
-[cloud_assingment_frontend](https://github.com/happyananya/cloud_assingment_frontend).
+[cc_frontend](https://github.com/happyananya/cc_frontend).
 
 | Path | What |
 |---|---|
