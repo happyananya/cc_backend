@@ -6,6 +6,7 @@ OpenSearch "photos" index for any photo whose labels match a keyword.
 import base64
 import json
 import os
+import re
 import uuid
 
 import boto3
@@ -25,6 +26,14 @@ CORS_HEADERS = {
     "Access-Control-Allow-Headers": "Content-Type,x-api-key,x-amz-meta-customLabels",
     "Access-Control-Allow-Methods": "GET,PUT,OPTIONS",
     "Content-Type": "application/json",
+}
+
+
+# Filler words dropped when Lex can't extract keywords (e.g. custom labels like "sam").
+STOPWORDS = {
+    "show", "me", "photo", "photos", "picture", "pictures", "image", "images", "pic", "pics",
+    "of", "with", "and", "in", "them", "it", "the", "a", "an", "find", "search", "for",
+    "please", "some", "all", "any", "containing", "that", "have", "has", "i", "want", "to", "see",
 }
 
 
@@ -59,6 +68,12 @@ def get_keywords(query):
     return keywords
 
 
+def fallback_keywords(query):
+    """Used when Lex returns no slots, so custom labels (names etc.) are still searchable."""
+    words = re.findall(r"[a-z0-9']+", query.lower())
+    return [w for w in words if w not in STOPWORDS]
+
+
 def search(keywords):
     terms = set()
     for keyword in keywords:
@@ -90,6 +105,8 @@ def search(keywords):
 def lambda_handler(event, context):
     q = (event.get("queryStringParameters") or {}).get("q", "").strip()
     keywords = get_keywords(q) if q else []
+    if q and not keywords:
+        keywords = fallback_keywords(q)
     print(f"q={q!r} keywords={keywords}")
 
     results = search(keywords) if keywords else []

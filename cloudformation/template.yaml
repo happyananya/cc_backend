@@ -195,13 +195,19 @@ Resources:
           BOT_ALIAS_ID: !Ref BotAliasId
       Code:
         ZipFile: |
-          import base64, json, os, uuid
+          import base64, json, os, re, uuid
           import boto3, urllib3
           lex = boto3.client("lexv2-runtime")
           http = urllib3.PoolManager()
           ES = os.environ["ES_ENDPOINT"].rstrip("/")
           AUTH = base64.b64encode(f"{os.environ['ES_USER']}:{os.environ['ES_PASS']}".encode()).decode()
           CORS = {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"}
+          STOPWORDS = {"show", "me", "photo", "photos", "picture", "pictures", "image", "images", "pic", "pics",
+                       "of", "with", "and", "in", "them", "it", "the", "a", "an", "find", "search", "for",
+                       "please", "some", "all", "any", "containing", "that", "have", "has", "i", "want", "to", "see"}
+
+          def fallback_keywords(q):
+              return [w for w in re.findall(r"[a-z0-9']+", q.lower()) if w not in STOPWORDS]
 
           def singular(w):
               if w.endswith("ies") and len(w) > 4: return w[:-3] + "y"
@@ -235,6 +241,8 @@ Resources:
           def lambda_handler(event, context):
               q = (event.get("queryStringParameters") or {}).get("q", "").strip()
               keywords = get_keywords(q) if q else []
+              if q and not keywords:
+                  keywords = fallback_keywords(q)
               results = search(keywords) if keywords else []
               return {"statusCode": 200, "headers": CORS, "body": json.dumps({"results": results})}
 
