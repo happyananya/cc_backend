@@ -32,12 +32,17 @@ def lambda_handler(event, context):
         custom = head.get("Metadata", {}).get("customlabels", "")
         labels = [l.strip().lower() for l in custom.split(",") if l.strip()]
 
-        response = rekognition.detect_labels(
-            Image={"S3Object": {"Bucket": bucket, "Name": key}},
-            MaxLabels=20,
-            MinConfidence=70,
-        )
-        labels += [l["Name"].lower() for l in response["Labels"]]
+        # Rekognition only reads JPEG/PNG. If it can't read the image, still index the
+        # custom labels so the photo stays searchable by them.
+        try:
+            response = rekognition.detect_labels(
+                Image={"S3Object": {"Bucket": bucket, "Name": key}},
+                MaxLabels=20,
+                MinConfidence=70,
+            )
+            labels += [l["Name"].lower() for l in response["Labels"]]
+        except rekognition.exceptions.InvalidImageFormatException as e:
+            print(f"Rekognition could not read {key}, indexing custom labels only: {e}")
 
         doc = {
             "objectKey": key,

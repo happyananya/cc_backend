@@ -158,8 +158,11 @@ Resources:
                   head = s3.head_object(Bucket=bucket, Key=key)
                   custom = head.get("Metadata", {}).get("customlabels", "")
                   labels = [l.strip().lower() for l in custom.split(",") if l.strip()]
-                  resp = rekognition.detect_labels(Image={"S3Object": {"Bucket": bucket, "Name": key}}, MaxLabels=20, MinConfidence=70)
-                  labels += [l["Name"].lower() for l in resp["Labels"]]
+                  try:
+                      resp = rekognition.detect_labels(Image={"S3Object": {"Bucket": bucket, "Name": key}}, MaxLabels=20, MinConfidence=70)
+                      labels += [l["Name"].lower() for l in resp["Labels"]]
+                  except rekognition.exceptions.InvalidImageFormatException as e:
+                      print(f"Rekognition could not read {key}, indexing custom labels only: {e}")
                   doc = {"objectKey": key, "bucket": bucket,
                          "createdTimestamp": head["LastModified"].strftime("%Y-%m-%dT%H:%M:%S"),
                          "labels": list(dict.fromkeys(labels))}
